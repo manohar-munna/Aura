@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - Aura{% endblock %}
+
+{% block content %}
+<div class="section">
+    <div class="container">
+        <h1 class="section-title">Patient Dashboard</h1>
+        
+        <div id="patientsGrid" class="dashboard-grid">
+            <div class="loading-spinner">Loading patients...</div>
+        </div>
+
+        <div id="analyticsPanel" style="display: none; margin-top: 3rem;">
+            <h2 id="selectedPatientName" class="section-title" style="font-size: 2.2rem; margin-bottom: 2rem;"></h2>
+            <div id="analyticsContent" class="info-card">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', loadPatients);
+
+async function loadPatients() {
+    const grid = document.getElementById('patientsGrid');
+    grid.innerHTML = '<div class="loading-spinner">Loading patients...</div>';
+    
+    try {
+        // FIX: CHANGED aPI ENDPOINT FROM /api/patients TO /api/my-patients
+        const response = await fetch('/api/my-patients');
+        const result = await response.json();
+        
+        if (result.patients && result.patients.length > 0) {
+            grid.innerHTML = result.patients.map(patient => `
+                <div class="info-card">
+                    <div class="card-header">
+                        <div class="avatar"><i class="fas fa-user"></i></div>
+                        <div>
+                            <h3>${patient.name}</h3>
+                            <p>${patient.email}</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Interactions (Last 7 Days):</strong> ${patient.recent_activity}</p>
+                        <p><strong>Last Contact:</strong> ${patient.last_interaction ? new Date(patient.last_interaction).toLocaleString() : 'N/A'}</p>
+                        <button class="btn-action" onclick="viewPatientAnalytics('${patient.id}', '${patient.name}')">View Analytics</button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            grid.innerHTML = `<div class="empty-state"><h3>No patients assigned.</h3></div>`;
+        }
+    } catch (error) {
+        console.error("Failed to load patients:", error);
+        grid.innerHTML = `<div class="empty-state"><h3>Error loading patient data.</h3></div>`;
+    }
+}
+
+async function viewPatientAnalytics(patientId, patientName) {
+    const analyticsPanel = document.getElementById('analyticsPanel');
+    const analyticsContent = document.getElementById('analyticsContent');
+    document.getElementById('selectedPatientName').textContent = `${patientName} - Analytics`;
+    analyticsPanel.style.display = 'block';
+    analyticsContent.innerHTML = '<div class="loading-spinner">Loading analytics...</div>';
+    
+    try {
+        const response = await fetch(`/api/patient/${patientId}/analytics`);
+        const result = await response.json();
+
+        const conversationsHtml = result.recent_conversations && result.recent_conversations.length > 0
+            ? result.recent_conversations.map(convo => `
+                <div style="border-left: 3px solid var(--primary-color); padding-left: 1rem; margin-bottom: 1rem; opacity: 0.9;">
+                    <p style="font-size: 0.8rem; opacity: 0.7;">${new Date(convo.timestamp).toLocaleString()} - ${convo.type}</p>
+                    <p><strong>Patient:</strong> ${convo.user_message.substring(0, 150)}...</p>
+                    <p><strong>Aura:</strong> ${convo.ai_response.substring(0, 150)}...</p>
+                </div>
+            `).join('')
+            : '<p>No recent conversations.</p>';
+
+        analyticsContent.innerHTML = `
+            <div class="dashboard-grid" style="gap: 1rem; margin-bottom: 2rem;">
+                <div style="text-align: center;">
+                    <h4 style="font-size: 2rem; margin: 0;">${result.total_interactions || 0}</h4>
+                    <p style="opacity: 0.8;">Total Interactions</p>
+                </div>
+                <div style="text-align: center;">
+                    <h4 style="font-size: 2rem; margin: 0;">${(result.avg_sentiment || 0).toFixed(1)} / 5.0</h4>
+                    <p style="opacity: 0.8;">Avg. Sentiment</p>
+                </div>
+            </div>
+            <h3 style="margin-bottom: 1.5rem;">Recent Conversations</h3>
+            ${conversationsHtml}
+        `;
+
+    } catch (error) {
+        console.error("Failed to load analytics:", error);
+        analyticsContent.innerHTML = `<div class="empty-state"><h3>Error loading analytics.</h3></div>`;
+    }
+}
+</script>
+{% endblock %}

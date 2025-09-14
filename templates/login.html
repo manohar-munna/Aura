@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - Aura{% endblock %}
+
+{% block body_class %}auth{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Welcome Back</h2>
+            <p>Sign in to continue your journey with Aura</p>
+        </div>
+        
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full">
+                <i class="fas fa-sign-in-alt"></i>
+                Sign In
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="{{ url_for('register') }}">Get started here</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+        email: formData.get('email'),
+        password: formData.get('password')
+    };
+    
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.user_type === 'doctor') {
+                window.location.href = '/doctor';
+            } else {
+                window.location.href = '/chat';
+            }
+        } else {
+            alert(result.error || 'Login failed');
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+    }
+});
+</script>
+{% endblock %}

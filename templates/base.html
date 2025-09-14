@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aura - Mental Health Companion{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="vanta-bg"></div>
+
+    <header id="header">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="logo">Aura</a>
+            <nav>
+                <ul>
+                    {% if session.user_id %}
+                        {% if session.user_type == 'patient' %}
+                            <li><a href="{{ url_for('chat') }}">Chat</a></li>
+                            <li><a href="{{ url_for('my_doctor') }}">My Doctor</a></li>
+                        {% elif session.user_type == 'doctor' %}
+                            <li><a href="{{ url_for('doctor_dashboard') }}">Dashboard</a></li>
+                        {% endif %}
+                        <li class="nav-cta"><a href="#" onclick="event.preventDefault(); logout();">Logout</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li class="nav-cta"><a href="{{ url_for('register') }}">Get Started</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer id="contact">
+        <div class="container">
+            <p>&copy; 2025 Aura AI. All rights reserved. Your mental wellness partner.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Add logout function to the global scope if not already there
+        if (typeof logout !== 'function') {
+            async function logout() {
+                try {
+                    const response = await fetch('/api/logout', { method: 'POST' });
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        alert('Logout failed.');
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            }
+        }
+        
+        // Header scroll effect
+        const header = document.getElementById('header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+    
+    <!-- Vanta.js scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"></script>
+    <script>
+        VANTA.WAVES({
+          el: "#vanta-bg",
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200.00,
+          minWidth: 200.00,
+          scale: 1.00,
+          scaleMobile: 1.00,
+          color: 0x6a5acd,
+          shininess: 40.00,
+          waveHeight: 17.50,
+          waveSpeed: 0.60,
+          zoom: 0.80
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

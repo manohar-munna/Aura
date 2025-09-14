@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}My Doctor - Aura{% endblock %}
+
+{% block content %}
+<div class="section">
+    <div class="container" id="doctor-assignment-container">
+        <h1 class="section-title">My Doctor</h1>
+        <div id="assignment-status">
+            <p>Loading your assignment status...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', checkAssignment);
+
+async function checkAssignment() {
+    const container = document.getElementById('assignment-status');
+    try {
+        const response = await fetch('/api/my-doctor-assignment');
+        const data = await response.json();
+
+        if (data.assigned) {
+            displayAssignedDoctor(data.doctor);
+        } else {
+            loadAvailableDoctors();
+        }
+    } catch (error) {
+        console.error('Error checking assignment:', error);
+        container.innerHTML = '<p class="error-state">Could not load your doctor information. Please try again later.</p>';
+    }
+}
+
+function displayAssignedDoctor(doctor) {
+    const container = document.getElementById('assignment-status');
+    container.innerHTML = `
+        <div class="info-card" style="max-width: 500px; margin: 0 auto;">
+             <div class="card-header">
+                <div class="avatar"><i class="fas fa-stethoscope"></i></div>
+                <div>
+                    <h3>Your Assigned Professional</h3>
+                </div>
+            </div>
+            <div class="card-body" style="text-align: center;">
+                <h2>Dr. ${doctor.name}</h2>
+                <p>${doctor.email}</p>
+                <p style="margin-top: 1rem; opacity: 0.8;">Your conversations and progress analytics are shared with your assigned doctor to provide you with the best possible support.</p>
+            </div>
+        </div>
+    `;
+}
+
+async function loadAvailableDoctors() {
+    const container = document.getElementById('assignment-status');
+    container.innerHTML = `
+        <h2 style="text-align: center; font-weight: 400; margin-bottom: 2rem;">You are not yet assigned to a healthcare professional.</h2>
+        <p style="text-align: center; max-width: 600px; margin: 0 auto 3rem; opacity: 0.8;">Assigning a doctor allows them to monitor your progress and provide professional oversight. Please select a doctor from the list below.</p>
+        <div id="doctors-grid" class="dashboard-grid">
+            <p>Loading available doctors...</p>
+        </div>
+    `;
+    const grid = document.getElementById('doctors-grid');
+
+    try {
+        const response = await fetch('/api/available-doctors');
+        const data = await response.json();
+
+        if (data.doctors && data.doctors.length > 0) {
+            grid.innerHTML = data.doctors.map(doctor => `
+                <div class="doctor-card">
+                    <div class="card-header">
+                        <div class="avatar"><i class="fas fa-user-md"></i></div>
+                        <div>
+                            <h3>Dr. ${doctor.name}</h3>
+                            <p>${doctor.email}</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p>Specializes in providing compassionate mental health oversight.</p>
+                        <button class="btn-action" onclick="requestAssignment(${doctor.id})">Request Assignment</button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            grid.innerHTML = '<p class="empty-state">No doctors are available at this time. Please check back later.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading doctors:', error);
+        grid.innerHTML = '<p class="error-state">Could not load available doctors.</p>';
+    }
+}
+
+async function requestAssignment(doctorId) {
+    try {
+        const response = await fetch('/api/request-doctor', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ doctor_id: doctorId })
+        });
+        const result = await response.json();
+        if (result.success) {
+            checkAssignment();
+        } else {
+            alert('Failed to assign doctor: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error requesting assignment:', error);
+        alert('An error occurred while trying to assign the doctor.');
+    }
+}
+</script>
+{% endblock %}

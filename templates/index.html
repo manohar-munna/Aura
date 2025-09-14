@@ -1,1 +1,58 @@
+{% extends "base.html" %}
 
+{% block title %}Welcome to Aura{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <h1>Meet Aura: The AI That Cares Aloud</h1>
+        <p>Experience a new form of mental health support. Aura is a compassionate AI assistant that engages in human-like conversations and even calls to check on your well-being, providing a friendly voice when you need it most.</p>
+        <a href="{{ url_for('register') }}" class="cta-button">Join Our Beta</a>
+    </div>
+</section>
+
+<div class="main-content">
+    <section id="features" class="section">
+        <div class="container">
+            <h2 class="section-title">Why Aura is Different</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-comments"></i></div>
+                    <h3>Human-like Conversations</h3>
+                    <p>Talk or type freely about what's on your mind. Aura is designed to understand context, emotion, and nuance, making every chat feel natural and supportive.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-phone-alt"></i></div>
+                    <h3>Proactive Voice Calls</h3>
+                    <p>Seamlessly transition to a voice call when you need it. Hearing a supportive voice can make a world of difference. It's care that reaches out to you.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Secure & Confidential</h3>
+                    <p>Your privacy is our utmost priority. All conversations are encrypted and confidential, creating a safe space for you to express yourself without reservation.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="section">
+        <div class="container">
+            <h2 class="section-title">Simple Steps to a Better Headspace</h2>
+             <div class="features-grid">
+                <div class="feature-card">
+                    <h3>1. Sign Up</h3>
+                    <p>Join our beta to get early access. Setup is quick, easy, and secure.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>2. Assign Doctor</h3>
+                    <p>Connect with a healthcare professional who can monitor your progress and provide support.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>3. Connect</h3>
+                    <p>Start talking with Aura via text or voice. Begin your journey to mental wellness.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

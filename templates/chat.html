@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with Aura{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+    <div class="chat-container">
+        <div class="chat-header">
+            <div>
+                <h2>Aura is here to listen</h2>
+                <p style="opacity: 0.8; font-size: 0.9rem;">Your compassionate AI companion.</p>
+            </div>
+            <button id="voiceCallBtn" class="btn-voice">
+                <i class="fas fa-phone"></i> Voice Call
+            </button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai-message">
+                <div class="message-avatar">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="message-content">
+                    <p>Hello! I'm Aura, your mental health companion. I'm here to listen, support, and help you through whatever you're going through. How are you feeling right now?</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <form id="chatForm" class="chat-input-form">
+                <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off" required>
+                <button type="submit" class="btn-send">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Markdown Rendering Library -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+const chatMessages = document.getElementById('chatMessages');
+const messageInput = document.getElementById('messageInput');
+const chatForm = document.getElementById('chatForm');
+const voiceCallBtn = document.getElementById('voiceCallBtn');
+
+// --- Helper Functions ---
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message ai-message typing-indicator-container';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="message-avatar"><i class="fas fa-heart"></i></div>
+        <div class="message-content">
+            <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>
+    `;
+    chatMessages.appendChild(typingDiv);
+    scrollToBottom();
+}
+
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+function addMessage(content, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+    
+    const avatarIcon = isUser ? 'fa-user' : 'fa-heart';
+    
+    // Sanitize and render markdown for AI messages
+    const renderedContent = isUser ? `<p>${content}</p>` : marked.parse(content);
+
+    messageDiv.innerHTML = `
+        <div class="message-avatar"><i class="fas ${avatarIcon}"></i></div>
+        <div class="message-content">${renderedContent}</div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+}
+
+// --- Main Logic ---
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, true);
+    messageInput.value = '';
+    messageInput.focus();
+
+    await handleStreamingResponse(message);
+});
+
+async function handleStreamingResponse(message) {
+    showTypingIndicator();
+
+    let aiMessageContainer = null;
+    let fullResponse = '';
+
+    try {
+        const response = await fetch('/api/chat/stream', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n').filter(line => line.trim());
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.slice(6);
+                    const data = JSON.parse(dataStr);
+
+                    if (data.type === 'word') {
+                        if (!aiMessageContainer) {
+                            removeTypingIndicator();
+                            // Create the container but don't add content yet
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'message ai-message';
+                            messageDiv.innerHTML = `
+                                <div class="message-avatar"><i class="fas fa-heart"></i></div>
+                                <div class="message-content"></div>
+                            `;
+                            chatMessages.appendChild(messageDiv);
+                            aiMessageContainer = messageDiv.querySelector('.message-content');
+                        }
+                        // Append text and re-render markdown
+                        fullResponse += (fullResponse ? ' ' : '') + data.word;
+                        aiMessageContainer.innerHTML = marked.parse(fullResponse + '...'); // Add ellipsis for typing effect
+                        scrollToBottom();
+                    } else if (data.type === 'complete') {
+                        // Finalize the content without the ellipsis
+                        if (aiMessageContainer) {
+                             aiMessageContainer.innerHTML = marked.parse(fullResponse);
+                        }
+                        console.log("Stream complete. Conversation ID:", data.conversation_id);
+                    } else if (data.type === 'error') {
+                        throw new Error(data.message);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Streaming failed:', error);
+        removeTypingIndicator();
+        addMessage('I apologize, but I encountered an issue. Please try again.');
+    } finally {
+        // Final cleanup in case the loop breaks unexpectedly
+        if (aiMessageContainer) {
+            aiMessageContainer.innerHTML = marked.parse(fullResponse);
+            scrollToBottom();
+        }
+    }
+}
+
+// Voice call functionality
+voiceCallBtn.addEventListener('click', async () => {
+    voiceCallBtn.disabled = true;
+    voiceCallBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calling...';
+    try {
+        const response = await fetch('/api/start_call', { method: 'POST' });
+        const result = await response.json();
+        if (result.success) {
+            addMessage(`An AI voice call has been initiated to your registered phone number. Please answer the call to speak with Aura.`);
+        } else {
+            addMessage(`❌ ${result.error || 'Unable to start a voice call at this time.'}`);
+        }
+    } catch (error) {
+        addMessage('❌ A network error occurred while trying to start the call.');
+    } finally {
+        voiceCallBtn.disabled = false;
+        voiceCallBtn.innerHTML = '<i class="fas fa-phone"></i> Voice Call';
+    }
+});
+
+messageInput.focus();
+</script>
+{% endblock %}
